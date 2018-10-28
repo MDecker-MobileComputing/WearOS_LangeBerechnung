@@ -3,6 +3,7 @@ package de.mide.wear.langeberechnung;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.wearable.activity.WearableActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -29,8 +30,7 @@ public class MainActivity extends WearableActivity
      * dem Komma.
      * <br><br>
      *
-     * Beispiel Formatierung von Tausend: <pre>1.000</pre>
-     * <br>
+     * Beispiel Formatierung von Tausend: <pre>1.000</pre><br>
      * Beispiel Formatierung von einer Million: <pre>1.000.000</pre>
      */
     protected NumberFormat _zahlFormatierer = NumberFormat.getNumberInstance( Locale.GERMAN );
@@ -65,6 +65,14 @@ public class MainActivity extends WearableActivity
      * {@link MainActivity#setzteStatusBerechnungLaueft(boolean)}.
      */
     protected boolean _berechnungLaeuft = false;
+
+    /**
+     * Wenn diese Variable auf <code>true</code> gesetzt ist, dann soll
+     * der Berechnungs-Thread stoppen; damit dies erkannt wird muss
+     * während der Berechnung vom Thread regelmäßig der Wert dieser
+     * Variable abgefragt werden.
+     */
+    protected boolean _stoppSignalFuerBerechnung = false;
 
 
     /**
@@ -122,6 +130,9 @@ public class MainActivity extends WearableActivity
             zeigeTextAufErgebnisActivity( "INTERNER FEHLER:\nBerechnung läuft nicht." );
             return;
         }
+
+        _stoppSignalFuerBerechnung = true;
+        Log.i("LangeBerechung", "Stopp-Signal gesetzt");
     }
 
 
@@ -228,7 +239,12 @@ public class MainActivity extends WearableActivity
      * Normalerweise würde man die dritte Potenz der Zahl <code>inputParameter</code>
      * unter Verwendung der Methode {@link Math#pow(double, double)} ("pow" für "power of")
      * berechnen:
-     * <code>result = Math.pow(inputZahl, 3)</code>
+     * <code>result = Math.pow(inputZahl, 3);</code>
+     * <br><br>
+     *
+     * Diese Methode darf nicht im Main-Thread ausgeführt werden, weil sie u.U. wegen ihrer
+     * langen Laufzeit den (einzigen) Main-Thread blockieren würde.
+     *
      *
      * @param inputParameter  Zahl, von der die dritte Potenz berechnet werden soll.
      *
@@ -240,11 +256,17 @@ public class MainActivity extends WearableActivity
 
         long result = 0;
 
-        for (int i = 0; i < inputParameter; i++)
-            for (int j = 0; j < inputParameter; j++)
+        for (int i = 0; i < inputParameter; i++) {
+            for (int j = 0; j < inputParameter; j++) {
                 for (int k = 0; k < inputParameter; k++) {
                     result += 1;
                 }
+            }
+
+            if (_stoppSignalFuerBerechnung == true) {
+                return "";
+            }
+        }
 
         return _zahlFormatierer.format(result);
     }
@@ -262,6 +284,7 @@ public class MainActivity extends WearableActivity
         /** Zahl, von der die dritte Potenz berechnet werden soll. */
         private int __inputZahl = -1;
 
+
         /**
          * Konstruktor, kopiert <code>inputZahl</code> in Member-Variable
          * der Thread-Instanz.
@@ -277,31 +300,65 @@ public class MainActivity extends WearableActivity
          * Diese Methode wird in einem Hintergrund/Worker-Thread ausgeführt,
          * wenn die Methode {@link Thread#start()} der Thread-Instanz
          * aufgerufen wird. Diese Methode darf nicht direkt aufgerufen werden!
+         * <br><br>
+         *
+         * Diese Methode darf nicht direkt UI-Änderungen vornehmen, weil nur
+         * aus dem Main-Thread heraus UI-Änderungen vorgenommen werden dürfen
+         * (App wird sonst vom System beendet). UI-Änderungen müssen deshalb
+         * mit einem {@link Runnable}-Objekt gekapselt werden und mit der Methode
+         * {@link MainActivity#runOnUiThread(Runnable)} an die Warteschlange
+         * der UI-Threads übergeben werden.
          */
         @Override
         public void run() {
 
-            setzteStatusBerechnungLaueft( true );
+            _stoppSignalFuerBerechnung  = false;
+
+            Runnable runnable1 = new Runnable() {
+                public void run() {
+                    setzteStatusBerechnungLaueft( true );
+                }
+            };
+            runOnUiThread( runnable1 );
+
 
             long zeitpunktStart = System.nanoTime();
 
             // *** eigentliche Berechnung durchführen ***
             String berechnungsErgebnisString = berechnung( __inputZahl );
 
+            final boolean berechnungAbgebrochen;
+            if (berechnungsErgebnisString.trim().length() == 0) {
+                berechnungAbgebrochen = true;
+            } else {
+                berechnungAbgebrochen = false;
+            }
+
             long zeitpunktEnde = System.nanoTime();
 
             long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
 
-            String ergebnisString =
+            final String ergebnisString =
                             "Ergebnis:\n"     + berechnungsErgebnisString   +
                             "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
 
-            zeigeTextAufErgebnisActivity( ergebnisString );
-
-            setzteStatusBerechnungLaueft( false );
+            Runnable runnable2 = new Runnable() {
+                public void run() {
+                    if (berechnungAbgebrochen == false) {
+                        zeigeTextAufErgebnisActivity(ergebnisString);
+                    } else {
+                        Toast.makeText(
+                                MainActivity.this,
+                                "Berechnung abgebrochen!",
+                                Toast.LENGTH_LONG).show();
+                    }
+                    setzteStatusBerechnungLaueft( false );
+                }
+            };
+            runOnUiThread( runnable2 );
         }
 
-    }
+    } // Ende Klasse MeinWorkerThread
 
     /* **************************** */
     /* *** Ende innere Klassen  *** */
