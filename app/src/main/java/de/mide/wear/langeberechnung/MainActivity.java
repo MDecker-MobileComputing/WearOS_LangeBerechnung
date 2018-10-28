@@ -17,6 +17,10 @@ import java.util.Locale;
 
 
 /**
+ * WearOS-App die zeigt, wie man eine lange Berechnung in einen Hintergrund-Thread
+ * auslagert.
+ * <br><br>
+ *
  * This project is licensed under the terms of the BSD 3-Clause License.
  */
 public class MainActivity extends WearableActivity
@@ -31,7 +35,6 @@ public class MainActivity extends WearableActivity
      *
      * Beispiel Formatierung von Tausend: <pre>1.000</pre>
      * <br>
-     *
      * Beispiel Formatierung von einer Million: <pre>1.000.000</pre>
      */
     protected NumberFormat _zahlFormatierer = NumberFormat.getNumberInstance( Locale.GERMAN );

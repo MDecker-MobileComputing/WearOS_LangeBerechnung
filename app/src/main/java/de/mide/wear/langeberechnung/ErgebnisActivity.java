@@ -11,6 +11,10 @@ import org.w3c.dom.Text;
 
 
 /**
+ * Sekundäre Activity der App zur Anzeige eines Ergebnisses oder
+ * einer Fehlermeldung.
+ * <br><br>
+ *
  * This project is licensed under the terms of the BSD 3-Clause License.
  */
 public class ErgebnisActivity extends WearableActivity

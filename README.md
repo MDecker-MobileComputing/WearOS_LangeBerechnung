@@ -13,16 +13,14 @@ Identifiers (names for classes, variables and methods), (JavaDoc) comments and U
 <br>
 
 
-<!--
+----
 
 ## Screenshots
 
-![Screenshot 1](screenshot_1.png)  
-
-![Screenshot 2](screenshot_2.png) 
+![Screenshot 1](screenshot_1.png)   ![Screenshot 2](screenshot_2.png) 
 
 <br>
--->
+
 
 ----
 # License
