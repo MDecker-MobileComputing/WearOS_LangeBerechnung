@@ -21,7 +21,11 @@ public class ErgebnisActivity extends WearableActivity
                               implements View.OnClickListener {
 
 
-    /** Key für Extra, das den von dieser Activity anzuzeigenden Text enthält. */
+    /**
+     * Key für Extra, das den von dieser Activity anzuzeigenden Text enthält;
+     * ein Intent, mit dem diese Activity aufgerufen wird, muss immer ein
+     * Extra mit diesem Key enthalten!
+     */
     public static final String EXTRA_KEY_ERGEBNIS = "ergebnis";
 
     /**

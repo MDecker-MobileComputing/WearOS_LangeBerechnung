@@ -6,13 +6,9 @@ import android.support.wearable.activity.WearableActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
-import android.widget.TextView;
 import android.widget.Toast;
 
-import java.text.DecimalFormat;
-import java.text.FieldPosition;
 import java.text.NumberFormat;
-import java.text.ParsePosition;
 import java.util.Locale;
 
 
@@ -58,10 +54,17 @@ public class MainActivity extends WearableActivity
 
 
     /** Button zum Start der Berechnung. */
-    protected Button _startButton = null;
+    protected Button _startStopButton = null;
 
     /** UI-Element zur Eingabe der Zahl die potenziert werden soll. */
     protected EditText _zahlEditText = null;
+
+    /**
+     * Variable ist genau dann <code>true</code>, wenn gerade eine Berechnung
+     * läuft; darf nicht direkt geändert werden, sondern nur über Methode
+     * {@link MainActivity#setzteStatusBerechnungLaueft(boolean)}.
+     */
+    protected boolean _berechnungLaeuft = false;
 
 
     /**
@@ -74,53 +77,131 @@ public class MainActivity extends WearableActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        _zahlEditText = findViewById( R.id.zahlEditText );
-        _startButton  = findViewById( R.id.startButton  );
+        _zahlEditText    = findViewById( R.id.zahlEditText     );
+        _startStopButton = findViewById( R.id.startStopButton  );
 
-        _startButton.setOnClickListener( this );
+        _startStopButton.setOnClickListener( this );
 
         setAmbientEnabled(); // Enables Always-on
     }
 
 
     /**
-     * Event-Handler-Methode für den Button zum Start der
-     * Berechnung.
+     * Methode zum Starten der Berechnung.
+     */
+    protected void starteBerechnung() {
+
+        if (_berechnungLaeuft == true) {
+            zeigeTextAufErgebnisActivity( "INTERNER FEHLER:\nBerechnung läuft schon." );
+            return;
+        }
+
+        int inputZahl = -1;
+
+        try {
+            inputZahl = holeZahl();
+
+        } catch (Exception ex) {
+            String fehlerString = "Ungültige Eingabe:\n" + ex.getMessage();
+            zeigeTextAufErgebnisActivity( fehlerString );
+
+            return;
+        }
+
+
+        setzteStatusBerechnungLaueft( true );
+
+        long zeitpunktStart = System.nanoTime();
+
+        // *** eigentliche Berechnung durchführen ***
+        String berechnungsErgebnisString = berechnung( inputZahl );
+
+        long zeitpunktEnde = System.nanoTime();
+
+
+        long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
+
+        String ergebnisString =
+                "Ergebnis:\n"     + berechnungsErgebnisString   +
+                "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
+
+        zeigeTextAufErgebnisActivity( ergebnisString );
+
+
+        setzteStatusBerechnungLaueft( false);
+    }
+
+
+    /**
+     * Methode zum Abbrechen einer laufenden Berechnung.
+     */
+    protected void stoppeBerechnung() {
+
+        if (_berechnungLaeuft == false) {
+
+            zeigeTextAufErgebnisActivity( "INTERNER FEHLER:\nBerechnung läuft nicht." );
+            return;
+        }
+    }
+
+
+    /**
+     * Setzt Status-Flag (Member-Variable) und aktualisiert UI entsprechend.
      *
-     * @param view  Button, der Event ausgelöst hat.
+     * @param berechnungLaeuft  Neuer Status.
+     */
+    protected void setzteStatusBerechnungLaueft(boolean berechnungLaeuft) {
+
+        _berechnungLaeuft = berechnungLaeuft;
+
+        if (_berechnungLaeuft == true) {
+
+            _zahlEditText.setEnabled(false);
+            _startStopButton.setText("Abbrechen");
+
+        } else {
+
+            _zahlEditText.setEnabled(true);
+            _startStopButton.setText("Berechnung starten");
+        }
+    }
+
+
+    /**
+     * Event-Handler-Methode für den Button; je nach Status der Berechnung
+     * wird entwender die Methode {@link MainActivity#starteBerechnung()}
+     * oder die Methode {@link MainActivity#stoppeBerechnung()} aufgerufen.
+     *
+     * @param view  Button, der Event ausgelöst hat (wird nicht ausgewertet,
+     *              da die Activity nur einen Button hat).
      */
     @Override
     public void onClick(View view ) {
 
-        String ergebnisString = "";
+        if (_berechnungLaeuft == false) {
 
-        try {
+            starteBerechnung();
 
-            int inputZahl = holeZahl();
+        } else { // Berechnung abbrechen
 
-            _startButton.setEnabled(false);
-            long zeitpunktStart = System.nanoTime();
-
-            // *** eigentliche Berechnung durchführen ***
-            ergebnisString = berechnung( inputZahl );
-
-            long zeitpunktEnde = System.nanoTime();
-            _startButton.setEnabled(true);
-
-
-            long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
-
-            ergebnisString = "Ergebnis:\n"     + ergebnisString   +
-                             "\n\nLaufzeit: ≈" + laufzeitSekunden + " sec";
-
-        } catch (Exception ex) {
-
-            ergebnisString = "FEHLER:\n" + ex.getMessage();
+            stoppeBerechnung();
         }
+    }
 
-        Intent intent = new Intent(this, ErgebnisActivity.class);
-        intent.putExtra(ErgebnisActivity.EXTRA_KEY_ERGEBNIS, ergebnisString );
-        startActivity(intent); // zur ErgebnisActivity springen
+
+    /**
+     * Zeigt <code>text</code> auf {@link ErgebnisActivity} an; diese
+     * Activity wird über einen expliziten Intent geöffnet, der Text
+     * wird hierbei als Extra mitgegeben.
+     *
+     * @param text  Auf {@link ErgebnisActivity} anzuzeigender Text
+     *              (kann auch Fehlermeldung sein).
+     */
+    protected void zeigeTextAufErgebnisActivity(String text) {
+
+        Intent intent = new Intent( this, ErgebnisActivity.class );
+        intent.putExtra( ErgebnisActivity.EXTRA_KEY_ERGEBNIS, text );
+        startActivity(intent);
     }
 
 
@@ -129,7 +210,7 @@ public class MainActivity extends WearableActivity
      * Zahl zurück. Wenn keine gültige Zahl größer 0 in dieses Element
      * eingegeben ist, dann wird eine Exception geworfen.
      *
-     * @return Zahl aus {@link EditText}-Element, größer 0
+     * @return Zahl aus {@link EditText}-Element, größer 0.
      *
      * @throws Exception  Im {@link EditText}-Element steht gerade keine gültige Zahl.
      */
@@ -179,7 +260,7 @@ public class MainActivity extends WearableActivity
                     result += 1;
                 }
 
-
         return _zahlFormatierer.format(result);
     }
+
 }
