@@ -104,31 +104,11 @@ public class MainActivity extends WearableActivity
         } catch (Exception ex) {
             String fehlerString = "Ungültige Eingabe:\n" + ex.getMessage();
             zeigeTextAufErgebnisActivity( fehlerString );
-
             return;
         }
 
-
-        setzteStatusBerechnungLaueft( true );
-
-        long zeitpunktStart = System.nanoTime();
-
-        // *** eigentliche Berechnung durchführen ***
-        String berechnungsErgebnisString = berechnung( inputZahl );
-
-        long zeitpunktEnde = System.nanoTime();
-
-
-        long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
-
-        String ergebnisString =
-                "Ergebnis:\n"     + berechnungsErgebnisString   +
-                "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
-
-        zeigeTextAufErgebnisActivity( ergebnisString );
-
-
-        setzteStatusBerechnungLaueft( false);
+        MeinWorkerThread mwt = new MeinWorkerThread(inputZahl);
+        mwt.start(); // nicht "run()"-Methode direkt aufrufen
     }
 
 
@@ -201,7 +181,7 @@ public class MainActivity extends WearableActivity
 
         Intent intent = new Intent( this, ErgebnisActivity.class );
         intent.putExtra( ErgebnisActivity.EXTRA_KEY_ERGEBNIS, text );
-        startActivity(intent);
+        startActivity( intent );
     }
 
 
@@ -241,8 +221,14 @@ public class MainActivity extends WearableActivity
      * Der Speicherplatz steigt aber <i>NICHT</i> mit <code>inputParameter</code>.
      * Normalerweise würde man für diese Berechnung die Methode {@link Math#pow(double, double)}
      * verwenden.
-     * <br>
+     * <br><br>
      * <b>Achtung:</b> Laufzeit wächst kubisch mit Wert von <i>inputParameter</i>!
+     * <br><br>
+     *
+     * Normalerweise würde man die dritte Potenz der Zahl <code>inputParameter</code>
+     * unter Verwendung der Methode {@link Math#pow(double, double)} ("pow" für "power of")
+     * berechnen:
+     * <code>result = Math.pow(inputZahl, 3)</code>
      *
      * @param inputParameter  Zahl, von der die dritte Potenz berechnet werden soll.
      *
@@ -262,5 +248,63 @@ public class MainActivity extends WearableActivity
 
         return _zahlFormatierer.format(result);
     }
+
+
+    /* **************************** */
+    /* *** Start innere Klassen *** */
+    /* **************************** */
+
+    /**
+     * Innere Klasse mit Worker-Thread zur Ausführung der Berechung.
+     */
+    public class MeinWorkerThread extends Thread {
+
+        /** Zahl, von der die dritte Potenz berechnet werden soll. */
+        private int __inputZahl = -1;
+
+        /**
+         * Konstruktor, kopiert <code>inputZahl</code> in Member-Variable
+         * der Thread-Instanz.
+         *
+         * @param inputZahl  Zahl, von der die dritte Potenz berechnet werden soll.
+         */
+        public MeinWorkerThread(int inputZahl) {
+            __inputZahl = inputZahl;
+        }
+
+
+        /**
+         * Diese Methode wird in einem Hintergrund/Worker-Thread ausgeführt,
+         * wenn die Methode {@link Thread#start()} der Thread-Instanz
+         * aufgerufen wird. Diese Methode darf nicht direkt aufgerufen werden!
+         */
+        @Override
+        public void run() {
+
+            setzteStatusBerechnungLaueft( true );
+
+            long zeitpunktStart = System.nanoTime();
+
+            // *** eigentliche Berechnung durchführen ***
+            String berechnungsErgebnisString = berechnung( __inputZahl );
+
+            long zeitpunktEnde = System.nanoTime();
+
+            long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
+
+            String ergebnisString =
+                            "Ergebnis:\n"     + berechnungsErgebnisString   +
+                            "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
+
+            zeigeTextAufErgebnisActivity( ergebnisString );
+
+            setzteStatusBerechnungLaueft( false );
+        }
+
+    }
+
+    /* **************************** */
+    /* *** Ende innere Klassen  *** */
+    /* **************************** */
 
 }
