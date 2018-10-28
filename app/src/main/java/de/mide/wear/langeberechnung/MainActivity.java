@@ -3,7 +3,6 @@ package de.mide.wear.langeberechnung;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.wearable.activity.WearableActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -48,15 +47,13 @@ public class MainActivity extends WearableActivity
      * Es wird die mit Java7 eingeführte Möglichkeit zur Verwendung von Unterstrichen
      * für die Gruppierung eines Zahl-Literals zur besseren Lesbarkeit verwendet
      * (siehe auch <a href="http://bit.ly/2CKFQVM" target="_blank">hier</a>).
-     *
      */
     protected static final long ZEHN_HOCH_NEUN = 1_000_000_000;
 
-
-    /** Button zum Start der Berechnung. */
+    /** Button zum Start oder Abbrechen der Berechnung. */
     protected Button _startStopButton = null;
 
-    /** UI-Element zur Eingabe der Zahl die potenziert werden soll. */
+    /** UI-Element zur Eingabe der Zahl, von der die dritte Potenz berechnet werden soll. */
     protected EditText _zahlEditText = null;
 
     /**
@@ -66,8 +63,19 @@ public class MainActivity extends WearableActivity
      */
     protected boolean _berechnungLaeuft = false;
 
-    /** Referenz auf Hintergrund-/Worker-Thread, der die Berechnung durchführt. */
-    protected MeinWorkerThread _meinWorkerThread = null;
+    /**
+     * Wenn diese Variable auf <code>true</code> gesetzt ist, dann soll
+     * der Berechnungs-Thread stoppen; damit dies erkannt wird muss
+     * während der Berechnung vom Thread regelmäßig der Wert dieser
+     * Variable abgefragt werden.
+     * <br><br>
+     *
+     * Die Variable ist mit dem Modifizierer <code>volatile</code>
+     * versehen, damit Threads den Wert dieser Variable nicht
+     * cachen (siehe z.B.
+     * <a href="http://bit.ly/2DahHsy" target="_blank">diesen Artikel</a>).
+     */
+    protected volatile boolean _stoppSignalFuerBerechnung = false;
 
 
     /**
@@ -80,8 +88,8 @@ public class MainActivity extends WearableActivity
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        _zahlEditText    = findViewById( R.id.zahlEditText     );
-        _startStopButton = findViewById( R.id.startStopButton  );
+        _zahlEditText    = findViewById( R.id.zahlEditText    );
+        _startStopButton = findViewById( R.id.startStopButton );
 
         _startStopButton.setOnClickListener( this );
 
@@ -110,8 +118,8 @@ public class MainActivity extends WearableActivity
             return;
         }
 
-        _meinWorkerThread = new MeinWorkerThread(inputZahl);
-        _meinWorkerThread.start(); // nicht "run()"-Methode direkt aufrufen
+        MeinWorkerThread meinThread = new MeinWorkerThread(inputZahl);
+        meinThread.start(); // nicht "run()"-Methode direkt aufrufen
     }
 
 
@@ -126,15 +134,7 @@ public class MainActivity extends WearableActivity
             return;
         }
 
-        if (_meinWorkerThread != null) {
-
-            _meinWorkerThread.stoppeBerechnung();
-
-        } else {
-
-            zeigeTextAufErgebnisActivity( "INTERNER FEHLER:\nThread-Objekt war NULL." );
-        }
-
+        _stoppSignalFuerBerechnung = true;
     }
 
 
@@ -227,6 +227,53 @@ public class MainActivity extends WearableActivity
     }
 
 
+    /**
+     * Berechnet <i>"inputParameter hoch drei"</i> auf bewusst ineffiziente Weise,
+     * nämlich mit einer dreifach gestaffelten Schleife.<br>
+     * Je größer der Wert <code>inputParameter</code> ist, desto länger dauert die Berechnung.
+     * Der Speicherplatz steigt aber <i>NICHT</i> mit <code>inputParameter</code>.
+     * Normalerweise würde man für diese Berechnung die Methode {@link Math#pow(double, double)}
+     * verwenden.
+     * <br><br>
+     * <b>Achtung:</b> Laufzeit wächst kubisch mit Wert von <i>inputParameter</i>!
+     * <br><br>
+     *
+     * Normalerweise würde man die dritte Potenz der Zahl <code>inputParameter</code>
+     * unter Verwendung der Methode {@link Math#pow(double, double)} ("pow" für "power of")
+     * berechnen:
+     * <code>result = Math.pow(inputZahl, 3);</code>
+     * <br><br>
+     *
+     * Diese Methode darf nicht im Main-Thread ausgeführt werden, weil sie u.U. wegen ihrer
+     * langen Laufzeit den (einzigen) Main-Thread blockieren würde.
+     *
+     *
+     * @param inputParameter  Zahl, von der die dritte Potenz berechnet werden soll.
+     *
+     * @return  Berechnungsergebnis (<code>inputParameter</code> hoch 3) als formatierter String
+     *          (Punkte zur 3er-Gruppierung vor dem Komma, z.B. <code>1.000.000</code> für
+     *           "eine Million").
+     */
+    protected String berechnung(int inputParameter) {
+
+        long result = 0;
+
+        for (int i = 0; i < inputParameter; i++) {
+            for (int j = 0; j < inputParameter; j++) {
+                for (int k = 0; k < inputParameter; k++) {
+                    result += 1;
+                }
+            }
+
+            if (_stoppSignalFuerBerechnung == true) {
+                return "";
+            }
+        }
+
+        return _zahlFormatierer.format(result);
+    }
+
+
     /* **************************** */
     /* *** Start innere Klassen *** */
     /* **************************** */
@@ -239,9 +286,6 @@ public class MainActivity extends WearableActivity
         /** Zahl, von der die dritte Potenz berechnet werden soll. */
         private int __inputZahl = -1;
 
-        /** Thread muss sich beenden, wenn diese Variable den Wert <code>true</code> hat. */
-        private boolean __stopSignal = false;
-
 
         /**
          * Konstruktor, kopiert <code>inputZahl</code> in Member-Variable
@@ -251,15 +295,6 @@ public class MainActivity extends WearableActivity
          */
         public MeinWorkerThread(int inputZahl) {
             __inputZahl = inputZahl;
-        }
-
-
-        /**
-         * Setzt Flag, um dem Thread zu signalisieren, dass er sich beenden soll.
-         */
-        public void stoppeBerechnung() {
-            __stopSignal = true;
-            Log.i("LangeBerechung", "Stopp-Signal wurde gesetzt gesetzt.");
         }
 
 
@@ -279,6 +314,8 @@ public class MainActivity extends WearableActivity
         @Override
         public void run() {
 
+            _stoppSignalFuerBerechnung  = false;
+
             Runnable runnable1 = new Runnable() {
                 public void run() {
                     setzteStatusBerechnungLaueft( true );
@@ -291,7 +328,6 @@ public class MainActivity extends WearableActivity
 
             // *** eigentliche Berechnung durchführen ***
             String berechnungsErgebnisString = berechnung( __inputZahl );
-
 
             final boolean berechnungAbgebrochen;
             if (berechnungsErgebnisString.trim().length() == 0) {
@@ -322,53 +358,6 @@ public class MainActivity extends WearableActivity
                 }
             };
             runOnUiThread( runnable2 );
-        }
-
-
-        /**
-         * Berechnet <i>"inputParameter hoch drei"</i> auf bewusst ineffiziente Weise,
-         * nämlich mit einer dreifach gestaffelten Schleife.<br>
-         * Je größer der Wert <code>inputParameter</code> ist, desto länger dauert die Berechnung.
-         * Der Speicherplatz steigt aber <i>NICHT</i> mit <code>inputParameter</code>.
-         * Normalerweise würde man für diese Berechnung die Methode {@link Math#pow(double, double)}
-         * verwenden.
-         * <br><br>
-         * <b>Achtung:</b> Laufzeit wächst kubisch mit Wert von <i>inputParameter</i>!
-         * <br><br>
-         *
-         * Normalerweise würde man die dritte Potenz der Zahl <code>inputParameter</code>
-         * unter Verwendung der Methode {@link Math#pow(double, double)} ("pow" für "power of")
-         * berechnen:
-         * <code>result = Math.pow(inputZahl, 3);</code>
-         * <br><br>
-         *
-         * Diese Methode darf nicht im Main-Thread ausgeführt werden, weil sie u.U. wegen ihrer
-         * langen Laufzeit den (einzigen) Main-Thread blockieren würde.
-         *
-         *
-         * @param inputParameter  Zahl, von der die dritte Potenz berechnet werden soll.
-         *
-         * @return  Berechnungsergebnis (<code>inputParameter</code> hoch 3) als formatierter String
-         *          (Punkte zur 3er-Gruppierung vor dem Komma, z.B. <code>1.000.000</code> für
-         *           "eine Million").
-         */
-        protected String berechnung(int inputParameter) {
-
-            long result = 0;
-
-            for (int i = 0; i < inputParameter; i++) {
-                for (int j = 0; j < inputParameter; j++) {
-                    for (int k = 0; k < inputParameter; k++) {
-                        result += 1;
-                        if (__stopSignal == true) {
-                            Log.i("LangeBerechung", "Stopp-Signal empfangen!");
-                            return "";
-                        }
-                    }
-                }
-            }
-
-            return _zahlFormatierer.format(result);
         }
 
     } // Ende Klasse MeinWorkerThread
