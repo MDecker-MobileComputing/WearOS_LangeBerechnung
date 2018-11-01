@@ -1,6 +1,7 @@
 package de.mide.wear.langeberechnung;
 
 import android.content.Intent;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.wearable.activity.WearableActivity;
 import android.view.View;
@@ -13,7 +14,7 @@ import java.util.Locale;
 
 
 /**
- * WearOS-App die zeigt, wie man eine lange Berechnung in einen Hintergrund-Thread
+ * Diese WearOS-App zeigt, wie man eine lange Berechnung in einen Hintergrund-Thread
  * auslagert.
  * <br><br>
  *
@@ -120,8 +121,13 @@ public class MainActivity extends WearableActivity
             return;
         }
 
+        /*
         MeinWorkerThread meinThread = new MeinWorkerThread(inputZahl);
         meinThread.start(); // nicht "run()"-Methode direkt aufrufen
+        */
+
+        MeinAsyncTask meinAsyncTask = new MeinAsyncTask();
+        meinAsyncTask.execute(inputZahl);
     }
 
 
@@ -349,11 +355,11 @@ public class MainActivity extends WearableActivity
             Runnable runnable2 = new Runnable() {
                 public void run() {
                     if (berechnungAbgebrochen == false) {
-                        zeigeTextAufErgebnisActivity(ergebnisString);
+                        zeigeTextAufErgebnisActivity( ergebnisString );
                     } else {
                         Toast.makeText(
                                 MainActivity.this,
-                                "Berechnung abgebrochen!",
+                                "Berechnung wurde vom Nutzer abgebrochen!",
                                 Toast.LENGTH_LONG).show();
                     }
                     setzteStatusBerechnungLaueft( false );
@@ -362,7 +368,78 @@ public class MainActivity extends WearableActivity
             runOnUiThread( runnable2 );
         }
 
-    } // Ende Klasse MeinWorkerThread
+    }; // Ende Klasse MeinWorkerThread
+
+    /**
+     * Innere Klasse, Unterklasse von {@link AsyncTask},
+     * zur Durchführung der Berechnung in einem Worker-Thread.
+     * Die Klasse {@link AsyncTask} steht nur unter Android
+     * (und nicht unter "normalem" Java) zur Verfügung.
+     */
+    public class MeinAsyncTask extends AsyncTask<Integer, Void, String> {
+
+        /**
+         * Diese Methode wird im Main-Thread ausgeführt, kann also UI-Änderungen
+         * vornehmen. Die Methode wird unmittelbar vor Start der Methode
+         * {@link MeinAsyncTask#doInBackground(Integer...)} aufgerufen.
+         */
+        public void onPreExecute() {
+            setzteStatusBerechnungLaueft( true );
+        }
+
+
+        /**
+         * Die lange Berechnung wird von dieser Methode in einem Hintergrund-Thread
+         * durchgeführt.
+         *
+         * @param params  Eine int-Zahl, von der die dritte Potenz berechnet
+         *                wird; es wird davon ausgeganngen, dass dieser
+         *                varags genau eine Zahl enthält.
+         *
+         * @return  String mit Berechnungs-Ergebnis, der der Methode
+         *          {@link MeinAsyncTask#onPostExecute(String)} als
+         *          Argument übergeben wird.
+         */
+        @Override
+        public String doInBackground(Integer... params) {
+
+            int inputZahl = params[0];
+
+            long zeitpunktStart = System.nanoTime();
+
+            // *** eigentliche Berechnung durchführen ***
+            String berechnungsErgebnisString = berechnung( inputZahl );
+
+            long zeitpunktEnde = System.nanoTime();
+
+            long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
+
+            final boolean berechnungAbgebrochen;
+            if (berechnungsErgebnisString.trim().length() == 0) {
+                return "Berechnung wurde vom Nutzer abgebrochen!";
+            }
+
+            String ergebnisString = "Ergebnis:\n"     + berechnungsErgebnisString   +
+                                    "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
+
+            return ergebnisString;
+        }
+
+        /**
+         * Methode zur Darstellung des Ergebnisses, wird im Main-Thread
+         * ausgeführt.
+         *
+         * @param ergebnisString  Ergebnis (return-Wert) von Methode
+         *                        {@link MeinAsyncTask#doInBackground(Integer...)}.
+         */
+        public void onPostExecute(String ergebnisString) {
+
+            setzteStatusBerechnungLaueft( false );
+
+            zeigeTextAufErgebnisActivity( ergebnisString );
+        }
+
+    };
 
     /* **************************** */
     /* *** Ende innere Klassen  *** */
