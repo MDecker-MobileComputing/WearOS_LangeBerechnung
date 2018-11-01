@@ -73,7 +73,9 @@ public class MainActivity extends WearableActivity
      * Die Variable ist mit dem Modifizierer <code>volatile</code>
      * versehen, damit Threads den Wert dieser Variable nicht
      * cachen (siehe z.B.
-     * <a href="http://bit.ly/2DahHsy" target="_blank">diesen Artikel</a>).
+     * <a href="http://bit.ly/2DahHsy" target="_blank">diesen Artikel</a>);
+     * wenn ein Thread den Wert dieser Variable cachen würde, dann würde
+     * der Abbruch des Threads nicht funktionieren.
      */
     protected volatile boolean _stoppSignalFuerBerechnung = false;
 
