@@ -403,6 +403,8 @@ public class MainActivity extends WearableActivity
         @Override
         public String doInBackground(Integer... params) {
 
+            _stoppSignalFuerBerechnung = false;
+
             int inputZahl = params[0];
 
             long zeitpunktStart = System.nanoTime();
