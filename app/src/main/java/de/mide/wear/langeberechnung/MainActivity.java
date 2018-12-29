@@ -329,13 +329,14 @@ public class MainActivity extends WearableActivity
                     setzteStatusBerechnungLaueft( true );
                 }
             };
-            runOnUiThread( runnable1 );
+            runOnUiThread( runnable1 ); // Alternative: _zahlEditText.post( runnable1 );
 
-
-            long zeitpunktStart = System.nanoTime();
 
             // *** eigentliche Berechnung durchführen ***
+            long zeitpunktStart = System.nanoTime();
             String berechnungsErgebnisString = berechnung( __inputZahl );
+            long zeitpunktEnde = System.nanoTime();
+
 
             final boolean berechnungAbgebrochen;
             if (berechnungsErgebnisString.trim().length() == 0) {
@@ -343,8 +344,6 @@ public class MainActivity extends WearableActivity
             } else {
                 berechnungAbgebrochen = false;
             }
-
-            long zeitpunktEnde = System.nanoTime();
 
             long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
 
