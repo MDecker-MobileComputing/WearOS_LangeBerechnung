@@ -407,11 +407,9 @@ public class MainActivity extends WearableActivity
 
             int inputZahl = params[0];
 
-            long zeitpunktStart = System.nanoTime();
-
             // *** eigentliche Berechnung durchführen ***
+            long zeitpunktStart = System.nanoTime();
             String berechnungsErgebnisString = berechnung( inputZahl );
-
             long zeitpunktEnde = System.nanoTime();
 
             long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
@@ -426,6 +424,7 @@ public class MainActivity extends WearableActivity
 
             return ergebnisString;
         }
+
 
         /**
          * Methode zur Darstellung des Ergebnisses, wird im Main-Thread
