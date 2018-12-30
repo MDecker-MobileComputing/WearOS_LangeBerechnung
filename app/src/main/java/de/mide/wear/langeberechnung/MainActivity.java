@@ -382,6 +382,7 @@ public class MainActivity extends WearableActivity
          * vornehmen. Die Methode wird unmittelbar vor Start der Methode
          * {@link MeinAsyncTask#doInBackground(Integer...)} aufgerufen.
          */
+        @Override
         public void onPreExecute() {
             setzteStatusBerechnungLaueft( true );
         }
@@ -389,7 +390,7 @@ public class MainActivity extends WearableActivity
 
         /**
          * Die lange Berechnung wird von dieser Methode in einem Hintergrund-Thread
-         * durchgeführt.
+         * (Worker-Thread) durchgeführt.
          *
          * @param params  Eine int-Zahl, von der die dritte Potenz berechnet
          *                wird; es wird davon ausgeganngen, dass dieser
@@ -433,6 +434,7 @@ public class MainActivity extends WearableActivity
          * @param ergebnisString  Ergebnis (return-Wert) von Methode
          *                        {@link MeinAsyncTask#doInBackground(Integer...)}.
          */
+        @Override
         public void onPostExecute(String ergebnisString) {
 
             setzteStatusBerechnungLaueft( false );
