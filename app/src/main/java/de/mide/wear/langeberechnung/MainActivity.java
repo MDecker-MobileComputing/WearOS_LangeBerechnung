@@ -88,6 +88,7 @@ public class MainActivity extends WearableActivity
      */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+    
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
@@ -302,6 +303,7 @@ public class MainActivity extends WearableActivity
          * @param inputZahl  Zahl, von der die dritte Potenz berechnet werden soll.
          */
         public MeinWorkerThread(int inputZahl) {
+        
             __inputZahl = inputZahl;
         }
 
@@ -331,10 +333,9 @@ public class MainActivity extends WearableActivity
             };
             runOnUiThread( runnable1 ); // Alternative: _zahlEditText.post( runnable1 );
 
-
-            // *** eigentliche Berechnung durchführen ***
+            
             long zeitpunktStart = System.nanoTime();
-            String berechnungsErgebnisString = berechnung( __inputZahl );
+            String berechnungsErgebnisString = berechnung( __inputZahl ); // *** eigentliche Berechnung durchführen ***
             long zeitpunktEnde = System.nanoTime();
 
 
@@ -384,6 +385,7 @@ public class MainActivity extends WearableActivity
          */
         @Override
         public void onPreExecute() {
+
             setzteStatusBerechnungLaueft( true );
         }
 
@@ -407,9 +409,8 @@ public class MainActivity extends WearableActivity
 
             int inputZahl = params[0];
 
-            // *** eigentliche Berechnung durchführen ***
             long zeitpunktStart = System.nanoTime();
-            String berechnungsErgebnisString = berechnung( inputZahl );
+            String berechnungsErgebnisString = berechnung( inputZahl ); // *** eigentliche Berechnung durchführen ***
             long zeitpunktEnde = System.nanoTime();
 
             long laufzeitSekunden = ( zeitpunktEnde - zeitpunktStart ) / ZEHN_HOCH_NEUN;
@@ -437,7 +438,6 @@ public class MainActivity extends WearableActivity
         public void onPostExecute(String ergebnisString) {
 
             setzteStatusBerechnungLaueft( false );
-
             zeigeTextAufErgebnisActivity( ergebnisString );
         }
 
