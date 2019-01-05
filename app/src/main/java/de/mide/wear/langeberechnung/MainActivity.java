@@ -302,6 +302,7 @@ public class MainActivity extends WearableActivity
          * @param inputZahl  Zahl, von der die dritte Potenz berechnet werden soll.
          */
         public MeinWorkerThread(int inputZahl) {
+
             __inputZahl = inputZahl;
         }
 
@@ -325,6 +326,7 @@ public class MainActivity extends WearableActivity
             _stoppSignalFuerBerechnung  = false;
 
             Runnable runnable1 = new Runnable() {
+                @Override
                 public void run() {
                     setzteStatusBerechnungLaueft( true );
                 }
@@ -352,6 +354,7 @@ public class MainActivity extends WearableActivity
                             "\n\nLaufzeit: ≈" + laufzeitSekunden            + " sec";
 
             Runnable runnable2 = new Runnable() {
+                @Override
                 public void run() {
                     if (berechnungAbgebrochen == false) {
                         zeigeTextAufErgebnisActivity( ergebnisString );
@@ -384,6 +387,7 @@ public class MainActivity extends WearableActivity
          */
         @Override
         public void onPreExecute() {
+
             setzteStatusBerechnungLaueft( true );
         }
 
